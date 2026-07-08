@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FarmersHub Admin Control</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-shell">
+  <header class="admin-topbar">
+    <div class="admin-brand">FarmersHub <span>Admin Control</span></div>
+    <nav class="admin-nav">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/farmers">Farmers</a>
+      <a href="/admin/membership-cards">Cards</a>
+      <button onclick="adminLogout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <section class="admin-hero">
+      <h1>Owner Command Center</h1>
+      <p>Track approvals, member status, animal trading activity, and digital card issuance.</p>
+    </section>
+
+    <section class="admin-grid" id="stats">
+      <div class="loading">Loading dashboard</div>
+    </section>
+
+    <section class="section" style="padding-left:0;padding-right:0">
+      <div class="section-header">
+        <h2>Top Animal Categories</h2>
+      </div>
+      <div class="table-card" id="categories"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    requireAdmin();
+
+    async function loadDashboard() {
+      try {
+        const { stats } = await adminFetch('/admin/stats', { headers: adminHeaders() });
+        document.getElementById('stats').innerHTML = `
+          <div class="admin-card"><h3>Total Farmers</h3><strong>${stats.totalFarmers}</strong></div>
+          <div class="admin-card"><h3>Pending Approvals</h3><strong>${stats.pendingApprovals}</strong></div>
+          <div class="admin-card"><h3>Approved Members</h3><strong>${stats.approvedMembers}</strong></div>
+          <div class="admin-card"><h3>Suspended Members</h3><strong>${stats.suspendedMembers}</strong></div>
+          <div class="admin-card"><h3>Total Animals</h3><strong>${stats.totalAnimals}</strong></div>
+          <div class="admin-card"><h3>Animals Sold</h3><strong>${stats.soldAnimals}</strong></div>
+          <div class="admin-card"><h3>Active Listings</h3><strong>${stats.activeListings}</strong></div>
+          <div class="admin-card"><h3>Market Value</h3><strong>${money(stats.marketplaceValue)}</strong></div>
+        `;
+        document.getElementById('categories').innerHTML = renderTable(
+          ['Category', 'Listings', 'Value'],
+          stats.topCategories.map((c) => [c.species, c.count, money(c.value)])
+        );
+      } catch (error) {
+        document.getElementById('stats').innerHTML = `<p class="error-state">${error.message}</p>`;
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

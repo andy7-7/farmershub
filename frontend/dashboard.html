@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - FarmersHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">Farmers<span>Hub</span></a>
+    <div class="nav-links" id="nav-links"></div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="dashboard-hero">
+      <h1 id="welcome-msg">Farmer Space</h1>
+      <p>Your private association trading dashboard.</p>
+    </div>
+
+    <div class="profile-layout">
+      <section class="profile-panel">
+        <div class="profile-card">
+          <div class="profile-avatar" id="profile-avatar"></div>
+          <div>
+            <h2 id="profile-name">Loading...</h2>
+            <p id="profile-meta">Association member</p>
+          </div>
+        </div>
+        <div class="profile-details" id="profile-details"></div>
+      </section>
+
+      <section class="form-container profile-editor">
+        <h2>Edit Profile</h2>
+        <p class="subtitle">Keep your farm space trusted and current.</p>
+        <div class="message" id="profile-msg"></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input id="full_name">
+          </div>
+          <div class="form-group">
+            <label>Farm Name</label>
+            <input id="farm_name">
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input id="phone">
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input id="location">
+          </div>
+          <div class="form-group">
+            <label>Region</label>
+            <input id="region">
+          </div>
+          <div class="form-group">
+            <label>Profile Image</label>
+            <label class="file-picker" for="profile_image">
+              <span id="profile-image-preview" class="file-preview"></span>
+              <span>
+                <strong>Choose profile image</strong>
+                <small id="profile-image-label">PNG or JPG up to 5MB</small>
+              </span>
+            </label>
+            <input class="visually-hidden-file" type="file" id="profile_image" accept="image/*">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Farm Description</label>
+          <textarea id="farm_description"></textarea>
+        </div>
+        <button class="form-submit" onclick="saveProfile()">Save Profile</button>
+      </section>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <h3 id="total-animals">-</h3>
+        <p>Animals Listed</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="active-animals">-</h3>
+        <p>Active Listings</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="sold-animals">-</h3>
+        <p>Sold Animals</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="total-value">-</h3>
+        <p>Total Value</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <h2>My Listings</h2>
+        <a href="add-animal.html" class="btn btn-primary">Add Animal</a>
+      </div>
+      <div class="animals-grid" id="my-animals-grid">
+        <div class="loading">Loading your listings</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    updateNav();
+    requireAuth();
+
+    let currentFarmer = {};
+
+    function fillProfile(farmer, animals) {
+      currentFarmer = farmer;
+      updateStoredFarmer(farmer);
+      document.getElementById('welcome-msg').textContent = `${farmer.farm_name || farmer.full_name || 'Farmer'} Space`;
+      document.getElementById('profile-name').textContent = farmer.full_name || 'Association Farmer';
+      document.getElementById('profile-meta').textContent = `${farmer.farm_name || 'Farm name not set'} | ${farmer.membership_id || 'Pending approval'}`;
+      document.getElementById('profile-avatar').style.backgroundImage = farmer.profile_image_url ? `url(${assetUrl(farmer.profile_image_url)})` : '';
+      document.getElementById('profile-image-preview').style.backgroundImage = farmer.profile_image_url ? `url(${assetUrl(farmer.profile_image_url)})` : '';
+      document.getElementById('profile-details').innerHTML = `
+        <p><strong>Association:</strong> ${farmer.association_name || 'Association member'}</p>
+        <p><strong>Membership ID:</strong> ${farmer.membership_id || 'Pending admin approval'}</p>
+        <p><strong>Status:</strong> ${farmer.account_status || 'pending'}</p>
+        <p><strong>Region:</strong> ${farmer.region || 'Not set'}</p>
+        <p><strong>Location:</strong> ${farmer.location || 'Not set'}</p>
+        <p><strong>Phone:</strong> ${farmer.phone || 'Not set'}</p>
+        <p>${farmer.farm_description || 'Add a farm description to help other members trust your listings.'}</p>
+      `;
+
+      ['full_name', 'farm_name', 'phone', 'location', 'region', 'farm_description'].forEach((id) => {
+        document.getElementById(id).value = farmer[id] || '';
+      });
+
+      const active = animals.filter((a) => a.status === 'available');
+      const sold = animals.filter((a) => a.status === 'sold');
+      document.getElementById('total-animals').textContent = animals.length;
+      document.getElementById('active-animals').textContent = active.length;
+      document.getElementById('sold-animals').textContent = sold.length;
+      document.getElementById('total-value').textContent = money(active.reduce((sum, a) => sum + Number(a.price || 0), 0));
+    }
+
+    document.getElementById('profile_image').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('profile-image-label').textContent = file.name.length > 28
+        ? `${file.name.slice(0, 25)}...`
+        : file.name;
+      const previewUrl = URL.createObjectURL(file);
+      document.getElementById('profile-image-preview').style.backgroundImage = `url(${previewUrl})`;
+      document.getElementById('profile-avatar').style.backgroundImage = `url(${previewUrl})`;
+    });
+
+    async function loadDashboard() {
+      try {
+        const data = await apiFetch('/farmers/me', { headers: authHeaders() });
+        fillProfile(data.farmer, data.animals);
+        const grid = document.getElementById('my-animals-grid');
+        grid.innerHTML = data.animals.length
+          ? data.animals.map((animal) => renderAnimalCard(animal, { owner: true })).join('')
+          : `<div class="empty-state"><p>No animals listed yet.</p><p>Your first listing can be live in minutes.</p><a href="add-animal.html" class="btn btn-primary" style="margin-top:20px;display:inline-flex">List Your First Animal</a></div>`;
+      } catch (error) {
+        document.getElementById('my-animals-grid').innerHTML = `<p class="error-state">${error.message}</p>`;
+      }
+    }
+
+    async function saveProfile() {
+      const formData = new FormData();
+      ['full_name', 'farm_name', 'phone', 'location', 'region', 'farm_description'].forEach((id) => {
+        formData.append(id, document.getElementById(id).value);
+      });
+      const image = document.getElementById('profile_image').files[0];
+      if (image) formData.append('profile_image', image);
+      try {
+        const data = await apiFetch('/farmers/me', {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: formData
+        });
+        updateStoredFarmer(data.farmer);
+        showMessage('profile-msg', 'Profile updated.', 'success');
+        loadDashboard();
+      } catch (error) {
+        showMessage('profile-msg', error.message, 'error');
+      }
+    }
+
+    async function deleteAnimal(id) {
+      if (!confirm('Remove this listing from the association marketplace?')) return;
+      try {
+        await apiFetch(`/animals/${id}`, { method: 'DELETE', headers: authHeaders() });
+        loadDashboard();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function markSold(id) {
+      try {
+        await apiFetch(`/animals/${id}`, {
+          method: 'PUT',
+          headers: jsonHeaders(),
+          body: JSON.stringify({ status: 'sold' })
+        });
+        loadDashboard();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

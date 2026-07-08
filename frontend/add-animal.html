@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>List Animal - FarmersHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">Farmers<span>Hub</span></a>
+    <div class="nav-links" id="nav-links"></div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="form-wrapper">
+      <div class="form-container wide-form">
+        <h2>List an Animal</h2>
+        <p class="subtitle">Publish a verified association listing with clear health and location details.</p>
+        <div class="message" id="msg"></div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Animal Name</label>
+            <input type="text" id="name" placeholder="e.g. Brown Heifer">
+          </div>
+          <div class="form-group">
+            <label>Animal Type</label>
+            <input type="text" id="species" placeholder="e.g. Cattle, Goat, Sheep">
+          </div>
+          <div class="form-group">
+            <label>Breed</label>
+            <input type="text" id="breed" placeholder="e.g. Holstein, Boer">
+          </div>
+          <div class="form-group">
+            <label>Age (years)</label>
+            <input type="number" id="age" placeholder="e.g. 2">
+          </div>
+          <div class="form-group">
+            <label>Price (GHS)</label>
+            <input type="number" id="price" placeholder="e.g. 1500">
+          </div>
+          <div class="form-group">
+            <label>Health Status</label>
+            <select id="health_status">
+              <option>Healthy</option>
+              <option>Vaccinated</option>
+              <option>Pregnant</option>
+              <option>Needs inspection</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Animal Location</label>
+            <input type="text" id="animal_location" placeholder="e.g. Kumasi">
+          </div>
+          <div class="form-group">
+            <label>Animal Photo</label>
+            <label class="file-picker file-picker-wide" for="image">
+              <span id="animal-image-preview" class="file-preview"></span>
+              <span>
+                <strong>Upload animal photo</strong>
+                <small id="animal-image-label">PNG or JPG up to 5MB</small>
+              </span>
+            </label>
+            <input class="visually-hidden-file" type="file" id="image" accept="image/*">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="description" placeholder="Describe the animal's health, weight, temperament, documents, and delivery options."></textarea>
+        </div>
+
+        <button class="form-submit" onclick="addAnimal()">List for Sale</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    updateNav();
+    requireAuth();
+
+    document.getElementById('image').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('animal-image-label').textContent = file.name.length > 28
+        ? `${file.name.slice(0, 25)}...`
+        : file.name;
+      document.getElementById('animal-image-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+    });
+
+    async function addAnimal() {
+      const formData = new FormData();
+      ['name', 'species', 'breed', 'age', 'price', 'health_status', 'animal_location', 'description'].forEach((id) => {
+        formData.append(id, document.getElementById(id).value);
+      });
+      const imageFile = document.getElementById('image').files[0];
+      if (imageFile) formData.append('image', imageFile);
+
+      try {
+        await apiFetch('/animals', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData
+        });
+        showMessage('msg', 'Animal listed successfully.', 'success');
+        setTimeout(() => window.location.href = 'dashboard.html', 900);
+      } catch (error) {
+        showMessage('msg', error.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

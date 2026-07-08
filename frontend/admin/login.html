@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FarmersHub Admin Control - Login</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-shell">
+  <main class="admin-login-wrap">
+    <section class="form-container">
+      <h2>Admin Control</h2>
+      <p class="subtitle">Secure owner access for FarmersHub membership approvals and digital cards.</p>
+      <div class="message" id="msg"></div>
+      <div class="form-group">
+        <label>Admin Email</label>
+        <input id="email" type="email" placeholder="admin@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="Admin password">
+      </div>
+      <button class="form-submit" onclick="loginAdmin()">Enter Admin Control</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    async function loginAdmin() {
+      try {
+        const data = await adminFetch('/auth/admin-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+        saveAdmin(data.token, data.farmer);
+        showAdminMessage('msg', 'Admin login successful.', 'success');
+        setTimeout(() => window.location.href = '/admin/dashboard', 700);
+      } catch (error) {
+        showAdminMessage('msg', error.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

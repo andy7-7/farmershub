@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animal Details - FarmersHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">Farmers<span>Hub</span></a>
+    <div class="nav-links" id="nav-links"></div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="section">
+      <div id="detail" class="detail-shell">
+        <div class="loading">Loading animal details</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    updateNav();
+    const animalId = new URLSearchParams(window.location.search).get('id');
+    let currentAnimal = null;
+
+    async function loadDetail() {
+      try {
+        const { animal } = await apiFetch(`/animals/${animalId}`);
+        currentAnimal = animal;
+        const phoneDigits = String(animal.phone || '').replace(/\D/g, '');
+        document.getElementById('detail').innerHTML = `
+          <div class="detail-media">
+            ${animal.image_url ? `<img src="${assetUrl(animal.image_url)}" alt="${animal.name}">` : '<div class="no-image"></div>'}
+          </div>
+          <div class="detail-content">
+            <span class="hero-badge">${animal.association_name || 'Association listing'}</span>
+            <h1>${animal.name}</h1>
+            <div class="price">${money(animal.price)}</div>
+            <div style="margin:14px 0">
+              <span class="tag green">${animal.species}</span>
+              ${animal.breed ? `<span class="tag">${animal.breed}</span>` : ''}
+              ${animal.age ? `<span class="tag orange">${animal.age} yrs</span>` : ''}
+              <span class="tag">${animal.health_status || 'Health not specified'}</span>
+            </div>
+            <p>${animal.description || 'No description added.'}</p>
+            <div class="farmer-info">
+              <strong>${animal.farmer_name}</strong><br>
+              ${animal.farm_name || 'Farm name not set'} | ${animal.membership_id || 'Member'}<br>
+              ${animal.animal_location || animal.farmer_location || 'Location not set'} | ${animal.phone || 'No phone'}
+            </div>
+            <div class="message" id="msg"></div>
+            <div class="contact-box">
+              ${phoneDigits ? `<a class="btn btn-primary" href="https://wa.me/${phoneDigits}" target="_blank">Contact on WhatsApp</a>` : ''}
+              ${animal.phone ? `<a class="btn btn-secondary" href="tel:${animal.phone}">Call Seller</a>` : ''}
+            </div>
+            <div class="form-group">
+              <label>Message Seller</label>
+              <textarea id="message" placeholder="Ask about inspection, delivery, documents, or availability."></textarea>
+            </div>
+            <button class="form-submit" onclick="sendMessage()">Send Internal Message</button>
+          </div>
+        `;
+      } catch (error) {
+        document.getElementById('detail').innerHTML = `<p class="error-state">${error.message}</p>`;
+      }
+    }
+
+    async function sendMessage() {
+      if (!getToken()) {
+        window.location.href = 'login.html';
+        return;
+      }
+      try {
+        await apiFetch('/messages', {
+          method: 'POST',
+          headers: jsonHeaders(),
+          body: JSON.stringify({
+            animal_id: currentAnimal.id,
+            seller_id: currentAnimal.farmer_id,
+            message: document.getElementById('message').value
+          })
+        });
+        showMessage('msg', 'Message sent to seller.', 'success');
+        document.getElementById('message').value = '';
+      } catch (error) {
+        showMessage('msg', error.message, 'error');
+      }
+    }
+
+    loadDetail();
+  </script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Animal - FarmersHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">Farmers<span>Hub</span></a>
+    <div class="nav-links" id="nav-links"></div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="form-wrapper">
+      <div class="form-container wide-form">
+        <h2>Edit Listing</h2>
+        <p class="subtitle">Update listing details, availability, health status, or photo.</p>
+        <div class="message" id="msg"></div>
+
+        <div class="form-grid">
+          <div class="form-group"><label>Animal Name</label><input id="name"></div>
+          <div class="form-group"><label>Animal Type</label><input id="species"></div>
+          <div class="form-group"><label>Breed</label><input id="breed"></div>
+          <div class="form-group"><label>Age</label><input type="number" id="age"></div>
+          <div class="form-group"><label>Price (GHS)</label><input type="number" id="price"></div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="status">
+              <option value="available">Available</option>
+              <option value="sold">Sold</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Health Status</label><input id="health_status"></div>
+          <div class="form-group"><label>Animal Location</label><input id="animal_location"></div>
+          <div class="form-group">
+            <label>Replace Photo</label>
+            <label class="file-picker file-picker-wide" for="image">
+              <span id="animal-image-preview" class="file-preview"></span>
+              <span>
+                <strong>Choose replacement photo</strong>
+                <small id="animal-image-label">Leave unchanged to keep current image</small>
+              </span>
+            </label>
+            <input class="visually-hidden-file" type="file" id="image" accept="image/*">
+          </div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="description"></textarea></div>
+        <button class="form-submit" onclick="saveAnimal()">Save Listing</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    updateNav();
+    requireAuth();
+    const animalId = new URLSearchParams(window.location.search).get('id');
+
+    document.getElementById('image').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('animal-image-label').textContent = file.name.length > 28
+        ? `${file.name.slice(0, 25)}...`
+        : file.name;
+      document.getElementById('animal-image-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+    });
+
+    async function loadAnimal() {
+      try {
+        const { animal } = await apiFetch(`/animals/${animalId}`);
+        ['name', 'species', 'breed', 'age', 'price', 'health_status', 'animal_location', 'description', 'status'].forEach((id) => {
+          document.getElementById(id).value = animal[id] || '';
+        });
+        if (animal.image_url) {
+          document.getElementById('animal-image-preview').style.backgroundImage = `url(${assetUrl(animal.image_url)})`;
+        }
+      } catch (error) {
+        showMessage('msg', error.message, 'error');
+      }
+    }
+
+    async function saveAnimal() {
+      const formData = new FormData();
+      ['name', 'species', 'breed', 'age', 'price', 'health_status', 'animal_location', 'description', 'status'].forEach((id) => {
+        formData.append(id, document.getElementById(id).value);
+      });
+      const imageFile = document.getElementById('image').files[0];
+      if (imageFile) formData.append('image', imageFile);
+      try {
+        await apiFetch(`/animals/${animalId}`, {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: formData
+        });
+        showMessage('msg', 'Listing updated.', 'success');
+        setTimeout(() => window.location.href = 'dashboard.html', 900);
+      } catch (error) {
+        showMessage('msg', error.message, 'error');
+      }
+    }
+
+    loadAnimal();
+  </script>
+</body>
+</html>

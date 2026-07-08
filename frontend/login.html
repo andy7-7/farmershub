@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - FarmersHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">Farmers<span>Hub</span></a>
+    <div class="nav-links" id="nav-links"></div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="form-wrapper">
+      <div class="form-container">
+        <h2>Member Login</h2>
+        <p class="subtitle">Access your farmer space, listings, messages, and association dashboard.</p>
+        <div class="message" id="msg"></div>
+
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Your password">
+        </div>
+
+        <button class="form-submit" onclick="loginFarmer()">Sign In</button>
+
+        <div class="form-link">
+          New to FarmersHub? <a href="register.html">Create a member account</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    updateNav();
+    async function loginFarmer() {
+      try {
+        const data = await apiFetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+        saveLogin(data.token, data.farmer);
+        showMessage('msg', 'Login successful. Redirecting...', 'success');
+        setTimeout(() => window.location.href = 'dashboard.html', 900);
+      } catch (error) {
+        showMessage('msg', error.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

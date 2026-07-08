@@ -1,0 +1,274 @@
+body.admin-shell {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(67, 242, 143, 0.3), transparent 32rem),
+    radial-gradient(ellipse at 92% 8%, rgba(40, 220, 232, 0.23), transparent 34rem),
+    radial-gradient(ellipse at 50% 108%, rgba(183, 255, 90, 0.12), transparent 38rem),
+    linear-gradient(145deg, #020807, #06231f 56%, #031614);
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 14px;
+  z-index: 20;
+  width: min(1180px, calc(100% - 32px));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin: 14px auto 0;
+  padding: 13px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  background: rgba(4, 21, 19, 0.78);
+  box-shadow: var(--shadow);
+  backdrop-filter: var(--blur);
+}
+
+.admin-brand {
+  font-weight: 800;
+}
+
+.admin-brand span {
+  color: var(--accent-2);
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-nav a,
+.admin-nav button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid rgba(126, 255, 219, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-nav a:hover,
+.admin-nav button:hover {
+  color: var(--text);
+  border-color: var(--glass-border-strong);
+}
+
+.admin-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.admin-hero {
+  margin-bottom: 26px;
+}
+
+.admin-hero h1 {
+  max-width: 780px;
+  background: linear-gradient(120deg, #fff, #8fffc0 48%, #42e7ef);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-size: clamp(36px, 6vw, 68px);
+  line-height: 1.02;
+}
+
+.admin-hero p {
+  max-width: 640px;
+  margin-top: 12px;
+  color: var(--text-muted);
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(156px, auto);
+  gap: 18px;
+}
+
+.admin-card {
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035)),
+    radial-gradient(circle at 90% 10%, rgba(67, 242, 143, 0.16), transparent 40%),
+    rgba(4, 25, 22, 0.72);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  padding: 24px;
+  backdrop-filter: blur(30px) saturate(150%);
+}
+
+.admin-card:nth-child(1),
+.admin-card:nth-child(8) {
+  grid-column: span 2;
+}
+
+.admin-card h3 {
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 36px;
+}
+
+.admin-login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.admin-login-wrap .form-container {
+  width: min(100%, 520px);
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.farmer-edit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.membership-card {
+  width: min(100%, 760px);
+  aspect-ratio: 1.62;
+  position: relative;
+  overflow: hidden;
+  padding: 34px;
+  border: 1px solid rgba(140, 255, 218, 0.5);
+  border-radius: 34px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.12), transparent 22%),
+    radial-gradient(circle at 88% 18%, rgba(40, 220, 232, .34), transparent 13rem),
+    radial-gradient(circle at 12% 88%, rgba(67, 242, 143, .3), transparent 14rem),
+    linear-gradient(145deg, rgba(3, 22, 20, .98), rgba(8, 49, 43, .94));
+  box-shadow:
+    0 34px 110px rgba(0, 0, 0, 0.52),
+    0 0 72px rgba(67, 242, 143, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.membership-card h2 {
+  font-size: 34px;
+}
+
+.membership-card .verified {
+  display: inline-flex;
+  margin: 12px 0 20px;
+  padding: 7px 12px;
+  border: 1px solid rgba(67, 242, 143, .4);
+  border-radius: 999px;
+  color: #bfffd7;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.card-lines {
+  display: grid;
+  gap: 9px;
+  color: var(--text-muted);
+  max-width: calc(100% - 190px);
+}
+
+.card-lines strong {
+  color: #fff;
+  font-size: clamp(26px, 4vw, 42px);
+  line-height: 1.04;
+}
+
+.qr-box {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  width: 152px;
+  height: 152px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.qr-box img {
+  width: 132px;
+  height: 132px;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  .admin-topbar,
+  .admin-hero,
+  .table-card,
+  .admin-actions,
+  .message {
+    display: none !important;
+  }
+
+  .admin-page {
+    padding: 0 !important;
+  }
+
+  .membership-card {
+    width: 100vw;
+    max-width: 10.5in;
+    margin: 0;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-card:nth-child(1),
+  .admin-card:nth-child(8) {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-grid,
+  .farmer-edit {
+    grid-template-columns: 1fr;
+  }
+
+  .membership-card {
+    aspect-ratio: auto;
+    min-height: 520px;
+  }
+
+  .qr-box {
+    left: 28px;
+    right: auto;
+  }
+}

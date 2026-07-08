@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace - FarmersHub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">Farmers<span>Hub</span></a>
+    <div class="nav-links" id="nav-links"></div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <h2>Association Marketplace</h2>
+          <p class="section-subtitle">Search verified listings from registered farmer members.</p>
+        </div>
+        <a href="add-animal.html" class="btn btn-primary" id="add-btn" style="display:none">List Animal</a>
+      </div>
+
+      <div class="filter-panel">
+        <input id="search" placeholder="Search animal, breed, description">
+        <input id="type" placeholder="Animal type">
+        <input id="breed" placeholder="Breed">
+        <input id="location" placeholder="Location">
+        <input id="health_status" placeholder="Health status">
+        <input type="number" id="minPrice" placeholder="Min price">
+        <input type="number" id="maxPrice" placeholder="Max price">
+        <button class="btn btn-primary" onclick="loadAnimals()">Apply Filters</button>
+        <button class="btn btn-secondary" onclick="clearFilters()">Clear</button>
+      </div>
+
+      <div class="animals-grid" id="animals-grid">
+        <div class="loading">Loading association listings</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    updateNav();
+    if (getToken()) document.getElementById('add-btn').style.display = 'inline-flex';
+
+    function filterQuery() {
+      const params = new URLSearchParams();
+      ['search', 'type', 'breed', 'location', 'health_status', 'minPrice', 'maxPrice'].forEach((id) => {
+        const value = document.getElementById(id).value.trim();
+        if (value) params.set(id, value);
+      });
+      return params.toString() ? `?${params.toString()}` : '';
+    }
+
+    function clearFilters() {
+      ['search', 'type', 'breed', 'location', 'health_status', 'minPrice', 'maxPrice'].forEach((id) => {
+        document.getElementById(id).value = '';
+      });
+      loadAnimals();
+    }
+
+    async function loadAnimals() {
+      const grid = document.getElementById('animals-grid');
+      grid.innerHTML = '<div class="loading">Loading association listings</div>';
+      try {
+        const data = await apiFetch(`/animals${filterQuery()}`);
+        grid.innerHTML = data.animals.length
+          ? data.animals.map((animal) => renderAnimalCard(animal)).join('')
+          : `<div class="empty-state"><p>No matching animals found.</p><p>Try widening your filters or check back soon.</p></div>`;
+      } catch (error) {
+        grid.innerHTML = `<p class="error-state">${error.message}</p>`;
+      }
+    }
+
+    loadAnimals();
+  </script>
+</body>
+</html>

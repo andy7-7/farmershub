@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farmers - FarmersHub Admin Control</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-shell">
+  <header class="admin-topbar">
+    <div class="admin-brand">FarmersHub <span>Admin Control</span></div>
+    <nav class="admin-nav">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/farmers">Farmers</a>
+      <a href="/admin/membership-cards">Cards</a>
+      <button onclick="adminLogout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <section class="admin-hero">
+      <h1>Farmer Applications</h1>
+      <p>Approve, reject, suspend, edit, and issue digital membership cards.</p>
+    </section>
+
+    <div class="message" id="msg"></div>
+    <div class="filter-panel">
+      <button class="btn btn-primary" onclick="setFilter('pending')">Pending Farmers</button>
+      <button class="btn btn-secondary" onclick="setFilter('approved')">Approved Members</button>
+      <button class="btn btn-secondary" onclick="setFilter('suspended')">Suspended</button>
+      <button class="btn btn-secondary" onclick="setFilter('rejected')">Rejected</button>
+      <button class="btn btn-secondary" onclick="setFilter('')">All Farmers</button>
+    </div>
+    <section class="table-card" id="farmers-table">
+      <div class="loading">Loading farmer applications</div>
+    </section>
+
+    <section class="form-container wide-form" style="margin-top:24px;display:none" id="editor">
+      <h2>Edit Farmer</h2>
+      <p class="subtitle">Update applicant details before approval or card regeneration.</p>
+      <input type="hidden" id="edit_id">
+      <div class="farmer-edit">
+        <div class="form-group"><label>Name</label><input id="edit_full_name"></div>
+        <div class="form-group"><label>Farm Name</label><input id="edit_farm_name"></div>
+        <div class="form-group"><label>Phone / WhatsApp</label><input id="edit_phone"></div>
+        <div class="form-group"><label>Email</label><input id="edit_email"></div>
+        <div class="form-group"><label>Location</label><input id="edit_location"></div>
+        <div class="form-group"><label>Region</label><input id="edit_region"></div>
+      </div>
+      <div class="form-group"><label>Farm Description</label><textarea id="edit_farm_description"></textarea></div>
+      <button class="form-submit" onclick="saveFarmer()">Save Farmer Details</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    requireAdmin();
+    let farmers = [];
+    let currentStatus = 'pending';
+
+    async function loadFarmers() {
+      try {
+        const query = currentStatus ? `?status=${currentStatus}` : '';
+        const data = await adminFetch(`/admin/farmers${query}`, { headers: adminHeaders() });
+        farmers = data.farmers;
+        document.getElementById('farmers-table').innerHTML = farmers.length ? renderTable(
+          ['Farmer', 'Contact', 'Location', 'Status', 'Membership', 'Actions'],
+          farmers.map((f) => [
+            `<strong>${f.full_name}</strong><br><small>${f.farm_name || 'No farm name'}<br>${f.farm_description || ''}</small>`,
+            `${f.phone || '-'}<br><small>${f.email}</small>`,
+            `${f.location || '-'}<br><small>${f.region || '-'}</small>`,
+            f.account_status,
+            f.membership_id || 'Not issued',
+            `<div class="admin-actions">
+              ${f.account_status === 'pending' || !f.membership_id ? `<button class="btn btn-green" onclick="approveFarmer(${f.id})">Approve</button>` : ''}
+              <button class="btn btn-secondary" onclick="setStatus(${f.id}, 'rejected')">Reject</button>
+              <button class="btn btn-red" onclick="setStatus(${f.id}, 'suspended')">Suspend</button>
+              <button class="btn btn-secondary" onclick="openEditor(${f.id})">Edit</button>
+              ${f.membership_id ? `<a class="btn btn-primary" href="/admin/membership-cards?card=${encodeURIComponent(f.membership_id)}">Card</a>` : ''}
+            </div>`
+          ])
+        ) : `<div class="empty-state"><p>No ${currentStatus || ''} farmers found.</p><p>New registrations will appear here as pending applications.</p></div>`;
+      } catch (error) {
+        document.getElementById('farmers-table').innerHTML = `<p class="error-state">${error.message}</p>`;
+      }
+    }
+
+    function setFilter(status) {
+      currentStatus = status;
+      loadFarmers();
+    }
+
+    async function approveFarmer(id) {
+      try {
+        await adminFetch(`/admin/farmers/${id}/approve`, { method: 'POST', headers: adminHeaders() });
+        showAdminMessage('msg', 'Farmer approved and membership card generated.');
+        loadFarmers();
+      } catch (error) {
+        showAdminMessage('msg', error.message, 'error');
+      }
+    }
+
+    async function setStatus(id, account_status) {
+      try {
+        await adminFetch(`/admin/farmers/${id}/status`, {
+          method: 'PATCH',
+          headers: adminJsonHeaders(),
+          body: JSON.stringify({ account_status })
+        });
+        showAdminMessage('msg', `Farmer marked ${account_status}.`);
+        loadFarmers();
+      } catch (error) {
+        showAdminMessage('msg', error.message, 'error');
+      }
+    }
+
+    function openEditor(id) {
+      const farmer = farmers.find((f) => f.id === id);
+      if (!farmer) return;
+      document.getElementById('editor').style.display = 'block';
+      document.getElementById('edit_id').value = farmer.id;
+      ['full_name', 'farm_name', 'phone', 'email', 'location', 'region', 'farm_description'].forEach((key) => {
+        document.getElementById(`edit_${key}`).value = farmer[key] || '';
+      });
+      document.getElementById('editor').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function saveFarmer() {
+      const id = document.getElementById('edit_id').value;
+      const payload = {};
+      ['full_name', 'farm_name', 'phone', 'email', 'location', 'region', 'farm_description'].forEach((key) => {
+        payload[key] = document.getElementById(`edit_${key}`).value;
+      });
+      try {
+        await adminFetch(`/admin/farmers/${id}`, {
+          method: 'PUT',
+          headers: adminJsonHeaders(),
+          body: JSON.stringify(payload)
+        });
+        showAdminMessage('msg', 'Farmer details saved.');
+        document.getElementById('editor').style.display = 'none';
+        loadFarmers();
+      } catch (error) {
+        showAdminMessage('msg', error.message, 'error');
+      }
+    }
+
+    loadFarmers();
+  </script>
+</body>
+</html>

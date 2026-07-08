@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Membership Cards - FarmersHub Admin Control</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-shell">
+  <header class="admin-topbar">
+    <div class="admin-brand">FarmersHub <span>Admin Control</span></div>
+    <nav class="admin-nav">
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/farmers">Farmers</a>
+      <a href="/admin/membership-cards">Cards</a>
+      <button onclick="adminLogout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <section class="admin-hero">
+      <h1>Digital Membership Cards</h1>
+      <p>View, print, copy verification links, and export verified farmer membership cards.</p>
+    </section>
+
+    <div class="message" id="msg"></div>
+    <section class="table-card" id="cards-table"><div class="loading">Loading cards</div></section>
+
+    <section style="margin-top:26px" id="card-preview"></section>
+    <div class="admin-actions" id="card-actions" style="margin-top:16px"></div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    requireAdmin();
+    let cards = [];
+    let selectedCard = null;
+
+    async function loadCards() {
+      try {
+        const data = await adminFetch('/admin/membership-cards', { headers: adminHeaders() });
+        cards = data.cards;
+        document.getElementById('cards-table').innerHTML = cards.length ? renderTable(
+          ['Member', 'Membership ID', 'Status', 'Generated', 'Actions'],
+          cards.map((c) => [
+            `<strong>${c.full_name}</strong><br><small>${c.farm_name || ''}</small>`,
+            c.membership_id,
+            c.account_status,
+            new Date(c.generated_at).toLocaleString(),
+            `<button class="btn btn-primary" onclick="selectCard('${c.membership_id}')">View Card</button>
+             <button class="btn btn-secondary" onclick="regenerate(${c.farmer_id})">Regenerate</button>`
+          ])
+        ) : '<div class="empty-state"><p>No membership cards yet.</p><p>Approve farmers to generate cards automatically.</p></div>';
+
+        const requested = new URLSearchParams(window.location.search).get('card');
+        if (requested) selectCard(requested);
+      } catch (error) {
+        document.getElementById('cards-table').innerHTML = `<p class="error-state">${error.message}</p>`;
+      }
+    }
+
+    function selectCard(membershipId) {
+      selectedCard = cards.find((card) => card.membership_id === membershipId);
+      if (!selectedCard) return;
+      const verification = selectedCard.verification_url || verifyLink(selectedCard.membership_id);
+      document.getElementById('card-preview').innerHTML = renderCard(selectedCard);
+      document.getElementById('card-actions').innerHTML = `
+        <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+        <button class="btn btn-secondary" onclick="downloadPngCard(selectedCard)">Download PNG</button>
+        <button class="btn btn-secondary" onclick="downloadSvgCard(selectedCard)">Download Card SVG</button>
+        <button class="btn btn-secondary" onclick="copyLink('${verification}')">Copy Verification Link</button>
+        <a class="btn btn-green" href="${verification}" target="_blank">Open Verification</a>
+      `;
+    }
+
+    async function regenerate(farmerId) {
+      try {
+        await adminFetch(`/admin/farmers/${farmerId}/regenerate-card`, {
+          method: 'POST',
+          headers: adminHeaders()
+        });
+        showAdminMessage('msg', 'Card regenerated.');
+        loadCards();
+      } catch (error) {
+        showAdminMessage('msg', error.message, 'error');
+      }
+    }
+
+    async function copyLink(link) {
+      await navigator.clipboard.writeText(link);
+      showAdminMessage('msg', 'Verification link copied.');
+    }
+
+    loadCards();
+  </script>
+</body>
+</html>
