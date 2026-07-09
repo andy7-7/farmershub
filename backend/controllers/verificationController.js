@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const getVerification = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT full_name, farm_name, membership_id, region, location, account_status, approved_at
+      `SELECT full_name, farm_name, membership_id, region, location, account_status, verified, approved_at
        FROM farmers
        WHERE membership_id = $1`,
       [req.params.membershipId]
@@ -19,8 +19,8 @@ const getVerification = async (req, res) => {
 
     const farmer = result.rows[0];
     res.json({
-      verified: farmer.account_status === 'approved',
-      status: farmer.account_status === 'approved' ? 'Verified' : farmer.account_status,
+      verified: farmer.verified === true,
+      status: farmer.verified === true ? 'Verified' : farmer.account_status,
       farmer
     });
   } catch (error) {
@@ -31,7 +31,7 @@ const getVerification = async (req, res) => {
 const renderVerificationPage = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT full_name, farm_name, membership_id, region, location, account_status, approved_at
+      `SELECT full_name, farm_name, membership_id, region, location, account_status, verified, approved_at
        FROM farmers
        WHERE membership_id = $1`,
       [req.params.membershipId]
@@ -39,7 +39,7 @@ const renderVerificationPage = async (req, res) => {
 
     const farmer = result.rows[0];
     const found = Boolean(farmer);
-    const verified = found && farmer.account_status === 'approved';
+    const verified = found && farmer.verified === true;
     const status = !found ? 'Not Found' : verified ? 'Verified' : farmer.account_status;
 
     res.send(`<!DOCTYPE html>

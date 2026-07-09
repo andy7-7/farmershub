@@ -80,15 +80,31 @@
   <script>
     updateNav();
     requireAuth();
+    const farmer = getFarmer();
 
-    document.getElementById('image').addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      document.getElementById('animal-image-label').textContent = file.name.length > 28
-        ? `${file.name.slice(0, 25)}...`
-        : file.name;
-      document.getElementById('animal-image-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`;
-    });
+    if (farmer.role !== 'admin' && (!farmer.verified || farmer.account_status !== 'approved')) {
+      document.querySelector('.form-container').innerHTML = `
+        <h2>Approval Required</h2>
+        <p class="subtitle">${farmer.account_status === 'rejected' ? 'Your account was rejected' : 'Your account is pending approval'}</p>
+        <div class="empty-state">
+          <p>Only approved verified farmers can list animals.</p>
+          <p>An admin must approve your membership before this feature becomes available.</p>
+          <a href="dashboard.html" class="btn btn-primary" style="margin-top:18px;display:inline-flex">Back to Dashboard</a>
+        </div>
+      `;
+    }
+
+    const imageInput = document.getElementById('image');
+    if (imageInput) {
+      imageInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        document.getElementById('animal-image-label').textContent = file.name.length > 28
+          ? `${file.name.slice(0, 25)}...`
+          : file.name;
+        document.getElementById('animal-image-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+      });
+    }
 
     async function addAnimal() {
       const formData = new FormData();

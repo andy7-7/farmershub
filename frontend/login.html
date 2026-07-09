@@ -52,7 +52,7 @@
           })
         });
         saveLogin(data.token, data.farmer);
-        showMessage('msg', 'Login successful. Redirecting...', 'success');
+        showMessage('msg', `${data.message}. Redirecting...`, 'success');
         setTimeout(() => window.location.href = 'dashboard.html', 900);
       } catch (error) {
         showMessage('msg', error.message, 'error');

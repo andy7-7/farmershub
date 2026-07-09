@@ -32,6 +32,7 @@ const ensureSchema = async () => {
     ALTER TABLE farmers ADD COLUMN IF NOT EXISTS association_id INTEGER REFERENCES associations(id) ON DELETE SET NULL;
     ALTER TABLE farmers ADD COLUMN IF NOT EXISTS role VARCHAR(30) DEFAULT 'farmer';
     ALTER TABLE farmers ADD COLUMN IF NOT EXISTS account_status VARCHAR(30) DEFAULT 'active';
+    ALTER TABLE farmers ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
     ALTER TABLE farmers ADD COLUMN IF NOT EXISTS is_suspicious BOOLEAN DEFAULT false;
     ALTER TABLE farmers ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
     ALTER TABLE farmers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
@@ -45,6 +46,8 @@ const ensureSchema = async () => {
     UPDATE farmers SET role = 'farmer' WHERE role IS NULL;
     UPDATE farmers SET account_status = 'approved' WHERE account_status = 'active';
     UPDATE farmers SET account_status = 'pending' WHERE account_status IS NULL;
+    UPDATE farmers SET verified = true WHERE account_status = 'approved' AND verified IS DISTINCT FROM true;
+    UPDATE farmers SET verified = false WHERE account_status <> 'approved' AND verified IS DISTINCT FROM false;
     UPDATE farmers SET is_suspicious = false WHERE is_suspicious IS NULL;
     UPDATE farmers
     SET role = 'admin'
@@ -98,6 +101,17 @@ const ensureSchema = async () => {
       sale_price NUMERIC,
       sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE sold_records ADD COLUMN IF NOT EXISTS seller_id INTEGER REFERENCES farmers(id) ON DELETE SET NULL;
+    ALTER TABLE sold_records ADD COLUMN IF NOT EXISTS buyer_id INTEGER REFERENCES farmers(id) ON DELETE SET NULL;
+    ALTER TABLE sold_records ADD COLUMN IF NOT EXISTS price NUMERIC;
+    ALTER TABLE sold_records ADD COLUMN IF NOT EXISTS date_sold TIMESTAMP;
+    ALTER TABLE sold_records ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'completed';
+
+    UPDATE sold_records SET seller_id = farmer_id WHERE seller_id IS NULL AND farmer_id IS NOT NULL;
+    UPDATE sold_records SET price = sale_price WHERE price IS NULL AND sale_price IS NOT NULL;
+    UPDATE sold_records SET date_sold = sold_at WHERE date_sold IS NULL AND sold_at IS NOT NULL;
+    UPDATE sold_records SET status = 'completed' WHERE status IS NULL;
 
     CREATE TABLE IF NOT EXISTS membership_cards (
       id SERIAL PRIMARY KEY,

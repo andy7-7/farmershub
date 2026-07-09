@@ -25,6 +25,7 @@
           <div>
             <h2 id="profile-name">Loading...</h2>
             <p id="profile-meta">Association member</p>
+            <div id="verified-badge"></div>
           </div>
         </div>
         <div class="profile-details" id="profile-details"></div>
@@ -103,6 +104,25 @@
         <div class="loading">Loading your listings</div>
       </div>
     </div>
+
+    <div class="section dashboard-business-grid">
+      <div class="table-card business-panel">
+        <div class="section-header">
+          <h2>Recent Inquiries</h2>
+        </div>
+        <div id="recent-inquiries" class="business-list">
+          <div class="loading">Loading inquiries</div>
+        </div>
+      </div>
+      <div class="table-card business-panel">
+        <div class="section-header">
+          <h2>Sales History</h2>
+        </div>
+        <div id="sales-history" class="business-list">
+          <div class="loading">Loading sales</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="config.js"></script>
@@ -119,12 +139,15 @@
       document.getElementById('welcome-msg').textContent = `${farmer.farm_name || farmer.full_name || 'Farmer'} Space`;
       document.getElementById('profile-name').textContent = farmer.full_name || 'Association Farmer';
       document.getElementById('profile-meta').textContent = `${farmer.farm_name || 'Farm name not set'} | ${farmer.membership_id || 'Pending approval'}`;
+      document.getElementById('verified-badge').innerHTML = farmer.verified
+        ? '<span class="verified-badge">Verified Farmer</span>'
+        : `<span class="status-badge">${farmer.account_status === 'rejected' ? 'Your account was rejected' : 'Your account is pending approval'}</span>`;
       document.getElementById('profile-avatar').style.backgroundImage = farmer.profile_image_url ? `url(${assetUrl(farmer.profile_image_url)})` : '';
       document.getElementById('profile-image-preview').style.backgroundImage = farmer.profile_image_url ? `url(${assetUrl(farmer.profile_image_url)})` : '';
       document.getElementById('profile-details').innerHTML = `
         <p><strong>Association:</strong> ${farmer.association_name || 'Association member'}</p>
         <p><strong>Membership ID:</strong> ${farmer.membership_id || 'Pending admin approval'}</p>
-        <p><strong>Status:</strong> ${farmer.account_status || 'pending'}</p>
+        <p><strong>Status:</strong> ${farmer.verified ? 'Your account has been approved' : farmer.account_status === 'rejected' ? 'Your account was rejected' : 'Your account is pending approval'}</p>
         <p><strong>Region:</strong> ${farmer.region || 'Not set'}</p>
         <p><strong>Location:</strong> ${farmer.location || 'Not set'}</p>
         <p><strong>Phone:</strong> ${farmer.phone || 'Not set'}</p>
@@ -143,6 +166,33 @@
       document.getElementById('total-value').textContent = money(active.reduce((sum, a) => sum + Number(a.price || 0), 0));
     }
 
+    function renderInquiries(inquiries = []) {
+      const target = document.getElementById('recent-inquiries');
+      target.innerHTML = inquiries.length ? inquiries.map((item) => `
+        <div class="business-row">
+          <div>
+            <strong>${item.buyer_name || 'Marketplace buyer'}</strong>
+            <p>${item.animal_name || 'General inquiry'} | ${new Date(item.created_at).toLocaleDateString()}</p>
+            <p>${item.message}</p>
+          </div>
+          ${item.buyer_phone ? `<a class="btn btn-secondary" href="tel:${item.buyer_phone}">Call</a>` : ''}
+        </div>
+      `).join('') : '<div class="empty-state"><p>No inquiries yet.</p><p>Buyer messages will appear here.</p></div>';
+    }
+
+    function renderSales(transactions = []) {
+      const target = document.getElementById('sales-history');
+      target.innerHTML = transactions.length ? transactions.map((sale) => `
+        <div class="business-row">
+          <div>
+            <strong>${sale.animal_name || `Animal #${sale.animal_id}`}</strong>
+            <p>${money(sale.price || sale.sale_price)} | ${new Date(sale.date_sold || sale.sold_at).toLocaleDateString()}</p>
+            <p>Status: ${sale.status || 'completed'}</p>
+          </div>
+        </div>
+      `).join('') : '<div class="empty-state"><p>No sold animals yet.</p><p>Completed sales will remain here as owner history.</p></div>';
+    }
+
     document.getElementById('profile_image').addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -158,7 +208,15 @@
       try {
         const data = await apiFetch('/farmers/me', { headers: authHeaders() });
         fillProfile(data.farmer, data.animals);
+        renderInquiries(data.inquiries || []);
+        renderSales(data.transactions || []);
         const grid = document.getElementById('my-animals-grid');
+        const addLink = document.querySelector('.section-header .btn-primary');
+        if (addLink && !data.farmer.verified) {
+          addLink.classList.add('disabled-link');
+          addLink.removeAttribute('href');
+          addLink.textContent = data.farmer.account_status === 'rejected' ? 'Account Rejected' : 'Awaiting Approval';
+        }
         grid.innerHTML = data.animals.length
           ? data.animals.map((animal) => renderAnimalCard(animal, { owner: true })).join('')
           : `<div class="empty-state"><p>No animals listed yet.</p><p>Your first listing can be live in minutes.</p><a href="add-animal.html" class="btn btn-primary" style="margin-top:20px;display:inline-flex">List Your First Animal</a></div>`;
@@ -199,11 +257,12 @@
     }
 
     async function markSold(id) {
+      if (!confirm('Mark this animal as sold? It will leave the available marketplace but stay in your history.')) return;
       try {
-        await apiFetch(`/animals/${id}`, {
-          method: 'PUT',
+        await apiFetch(`/animals/${id}/sold`, {
+          method: 'PATCH',
           headers: jsonHeaders(),
-          body: JSON.stringify({ status: 'sold' })
+          body: JSON.stringify({})
         });
         loadDashboard();
       } catch (error) {

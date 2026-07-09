@@ -70,7 +70,7 @@
             `<strong>${f.full_name}</strong><br><small>${f.farm_name || 'No farm name'}<br>${f.farm_description || ''}</small>`,
             `${f.phone || '-'}<br><small>${f.email}</small>`,
             `${f.location || '-'}<br><small>${f.region || '-'}</small>`,
-            f.account_status,
+            `${f.account_status}<br><small>${f.verified ? 'Verified' : 'Not verified'}</small>`,
             f.membership_id || 'Not issued',
             `<div class="admin-actions">
               ${f.account_status === 'pending' || !f.membership_id ? `<button class="btn btn-green" onclick="approveFarmer(${f.id})">Approve</button>` : ''}

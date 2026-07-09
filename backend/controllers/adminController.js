@@ -20,6 +20,23 @@ const generateMembershipId = async () => {
   return `FH-${year}-${String(lastNumber + 1).padStart(4, '0')}`;
 };
 
+const generateMembershipIdWithClient = async (client) => {
+  const year = new Date().getFullYear();
+  await client.query('SELECT pg_advisory_xact_lock($1)', [20260001]);
+  const result = await client.query(
+    `SELECT membership_id
+     FROM farmers
+     WHERE membership_id LIKE $1
+     ORDER BY membership_id DESC
+     LIMIT 1`,
+    [`FH-${year}-%`]
+  );
+  const lastNumber = result.rows.length
+    ? Number(result.rows[0].membership_id.split('-').pop())
+    : 0;
+  return `FH-${year}-${String(lastNumber + 1).padStart(4, '0')}`;
+};
+
 const buildCardData = (farmer, verificationUrl) => ({
   logo: 'FarmersHub',
   full_name: farmer.full_name,
@@ -40,6 +57,7 @@ const getStats = async (req, res) => {
       pendingFarmers,
       approvedFarmers,
       suspendedFarmers,
+      rejectedFarmers,
       totalAnimals,
       soldAnimals,
       activeListings,
@@ -50,6 +68,7 @@ const getStats = async (req, res) => {
       pool.query("SELECT COUNT(*)::int AS count FROM farmers WHERE account_status = 'pending'"),
       pool.query("SELECT COUNT(*)::int AS count FROM farmers WHERE account_status = 'approved'"),
       pool.query("SELECT COUNT(*)::int AS count FROM farmers WHERE account_status = 'suspended'"),
+      pool.query("SELECT COUNT(*)::int AS count FROM farmers WHERE account_status = 'rejected'"),
       pool.query('SELECT COUNT(*)::int AS count FROM animals'),
       pool.query("SELECT COUNT(*)::int AS count FROM animals WHERE status = 'sold'"),
       pool.query("SELECT COUNT(*)::int AS count FROM animals WHERE status = 'available'"),
@@ -69,6 +88,7 @@ const getStats = async (req, res) => {
         pendingApprovals: pendingFarmers.rows[0].count,
         approvedMembers: approvedFarmers.rows[0].count,
         suspendedMembers: suspendedFarmers.rows[0].count,
+        rejectedMembers: rejectedFarmers.rows[0].count,
         totalAnimals: totalAnimals.rows[0].count,
         soldAnimals: soldAnimals.rows[0].count,
         activeListings: activeListings.rows[0].count,
@@ -97,7 +117,7 @@ const getFarmers = async (req, res) => {
       `SELECT farmers.id, farmers.full_name, farmers.email, farmers.phone,
               farmers.location, farmers.farm_name, farmers.region,
               farmers.membership_id, farmers.role, farmers.account_status,
-              farmers.is_suspicious, farmers.approved_at, farmers.farm_description,
+              farmers.verified, farmers.is_suspicious, farmers.approved_at, farmers.farm_description,
               farmers.profile_image_url, farmers.created_at,
               associations.name AS association_name,
               membership_cards.id AS card_id,
@@ -193,10 +213,11 @@ const updateFarmerStatus = async (req, res) => {
     const result = await pool.query(
       `UPDATE farmers
        SET account_status = $1,
+           verified = CASE WHEN $1 = 'approved' THEN true ELSE false END,
            is_suspicious = $2,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $3
-       RETURNING id, full_name, email, account_status, is_suspicious`,
+       RETURNING id, full_name, email, account_status, verified, is_suspicious`,
       [
         account_status || existing.rows[0].account_status,
         is_suspicious !== undefined ? is_suspicious : existing.rows[0].is_suspicious,
@@ -226,7 +247,7 @@ const approveFarmer = async (req, res) => {
     if (!membershipId) {
       let unique = false;
       while (!unique) {
-        membershipId = await generateMembershipId();
+        membershipId = await generateMembershipIdWithClient(client);
         const duplicate = await client.query('SELECT id FROM farmers WHERE membership_id = $1', [membershipId]);
         unique = duplicate.rows.length === 0;
       }
@@ -235,6 +256,7 @@ const approveFarmer = async (req, res) => {
     const farmerResult = await client.query(
       `UPDATE farmers
        SET account_status = 'approved',
+           verified = true,
            membership_id = $1,
            approved_at = COALESCE(approved_at, CURRENT_TIMESTAMP),
            updated_at = CURRENT_TIMESTAMP

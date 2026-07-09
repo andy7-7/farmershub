@@ -12,7 +12,7 @@ const protect = async (req, res, next) => {
     const result = await pool.query(
       `SELECT id, full_name, email, phone, location, farm_name, region,
               profile_image_url, farm_description, membership_id,
-              association_id, role, account_status, is_suspicious
+              association_id, role, account_status, verified, is_suspicious
        FROM farmers
        WHERE id = $1`,
       [decoded.id]
@@ -22,15 +22,26 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Farmer account no longer exists' });
     }
 
-    if (result.rows[0].role !== 'admin' && result.rows[0].account_status !== 'approved') {
-      return res.status(403).json({ message: 'Farmer account is not approved yet' });
-    }
-
     req.farmer = result.rows[0];
     next();
   } catch (error) {
     res.status(401).json({ message: 'Invalid token' });
   }
+};
+
+const approvedFarmerOnly = (req, res, next) => {
+  if (!req.farmer || req.farmer.role === 'admin') {
+    return next();
+  }
+
+  if (req.farmer.account_status !== 'approved' || req.farmer.verified !== true) {
+    const message = req.farmer.account_status === 'rejected'
+      ? 'Your account was rejected'
+      : 'Your account is pending approval';
+    return res.status(403).json({ message });
+  }
+
+  next();
 };
 
 const adminOnly = (req, res, next) => {
@@ -40,4 +51,4 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-module.exports = { protect, adminOnly };
+module.exports = { protect, adminOnly, approvedFarmerOnly };

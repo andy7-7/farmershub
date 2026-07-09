@@ -37,6 +37,7 @@ const animalSelect = `
   farmers.region,
   farmers.profile_image_url,
   farmers.membership_id,
+  farmers.verified,
   associations.name AS association_name
 `;
 
@@ -111,6 +112,9 @@ const getAllAnimals = async (req, res) => {
     maxPrice,
     minAge,
     maxAge,
+    region,
+    availability,
+    verifiedOnly,
     status = 'available'
   } = req.query;
 
@@ -118,9 +122,11 @@ const getAllAnimals = async (req, res) => {
   const params = ['approved'];
   let index = params.length + 1;
 
-  if (status !== 'all') {
+  const listingStatus = availability || status;
+
+  if (listingStatus !== 'all') {
     where.push(`animals.status = $${index++}`);
-    params.push(status);
+    params.push(listingStatus);
   }
   if (search) {
     where.push(`(animals.name ILIKE $${index} OR animals.species ILIKE $${index} OR animals.breed ILIKE $${index} OR animals.description ILIKE $${index})`);
@@ -139,6 +145,13 @@ const getAllAnimals = async (req, res) => {
     where.push(`(animals.animal_location ILIKE $${index} OR farmers.location ILIKE $${index} OR farmers.region ILIKE $${index})`);
     params.push(`%${location}%`);
     index++;
+  }
+  if (region) {
+    where.push(`farmers.region ILIKE $${index++}`);
+    params.push(`%${region}%`);
+  }
+  if (verifiedOnly === 'true' || verifiedOnly === '1') {
+    where.push('farmers.verified = true');
   }
   if (health_status) {
     where.push(`animals.health_status ILIKE $${index++}`);
@@ -223,7 +236,8 @@ const updateAnimal = async (req, res) => {
     animal_location,
     location,
     description,
-    status
+    status,
+    buyer_id
   } = req.body;
 
   try {
@@ -239,6 +253,9 @@ const updateAnimal = async (req, res) => {
 
     const image_url = req.file ? `/uploads/${req.file.filename}` : animal.image_url;
     const nextStatus = status || animal.status;
+    if (nextStatus === 'sold' && animal.status !== 'sold' && animal.farmer_id !== req.farmer.id) {
+      return res.status(403).json({ message: 'Only the animal owner can mark this animal as sold' });
+    }
     const soldAt = nextStatus === 'sold' && animal.status !== 'sold' ? new Date() : animal.sold_at;
 
     const result = await pool.query(
@@ -274,14 +291,63 @@ const updateAnimal = async (req, res) => {
     );
 
     if (nextStatus === 'sold' && animal.status !== 'sold') {
-      await pool.query(
-        `INSERT INTO sold_records (animal_id, farmer_id, sale_price)
-         VALUES ($1, $2, $3)`,
-        [id, animal.farmer_id, result.rows[0].price]
-      );
+      await createSoldRecord(id, animal.farmer_id, buyer_id || null, result.rows[0].price);
     }
 
     res.json({ message: 'Animal updated successfully', animal: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const createSoldRecord = async (animalId, sellerId, buyerId, price) => {
+  const existing = await pool.query(
+    `SELECT id FROM sold_records WHERE animal_id = $1 LIMIT 1`,
+    [animalId]
+  );
+
+  if (existing.rows.length > 0) return;
+
+  await pool.query(
+    `INSERT INTO sold_records
+      (animal_id, farmer_id, seller_id, buyer_id, sale_price, price, sold_at, date_sold, status)
+     VALUES ($1, $2, $3, $4, $5, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'completed')`,
+    [animalId, sellerId, sellerId, buyerId || null, price]
+  );
+};
+
+const markAnimalSold = async (req, res) => {
+  const { id } = req.params;
+  const buyerId = req.body?.buyer_id || null;
+
+  try {
+    const existing = await pool.query('SELECT * FROM animals WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ message: 'Animal not found' });
+    }
+
+    const animal = existing.rows[0];
+    if (animal.farmer_id !== req.farmer.id) {
+      return res.status(403).json({ message: 'Only the animal owner can mark this animal as sold' });
+    }
+
+    if (animal.status === 'sold') {
+      return res.json({ message: 'Animal is already marked as sold', animal });
+    }
+
+    const result = await pool.query(
+      `UPDATE animals
+       SET status = 'sold',
+           sold_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND farmer_id = $2
+       RETURNING *`,
+      [id, req.farmer.id]
+    );
+
+    await createSoldRecord(id, req.farmer.id, buyerId, result.rows[0].price);
+
+    res.json({ message: 'Animal marked as sold', animal: result.rows[0] });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -312,5 +378,6 @@ module.exports = {
   getAnimalById,
   getMyAnimals,
   updateAnimal,
+  markAnimalSold,
   deleteAnimal
 };

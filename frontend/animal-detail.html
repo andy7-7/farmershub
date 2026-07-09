@@ -32,6 +32,7 @@
         const { animal } = await apiFetch(`/animals/${animalId}`);
         currentAnimal = animal;
         const phoneDigits = String(animal.phone || '').replace(/\D/g, '');
+        const isOwner = getFarmer().id === animal.farmer_id;
         document.getElementById('detail').innerHTML = `
           <div class="detail-media">
             ${animal.image_url ? `<img src="${assetUrl(animal.image_url)}" alt="${animal.name}">` : '<div class="no-image"></div>'}
@@ -42,20 +43,34 @@
             <div class="price">${money(animal.price)}</div>
             <div style="margin:14px 0">
               <span class="tag green">${animal.species}</span>
+              ${animal.verified ? '<span class="tag green">Verified Farmer</span>' : ''}
+              <span class="tag ${animal.status === 'sold' ? 'orange' : 'green'}">${animal.status || 'available'}</span>
               ${animal.breed ? `<span class="tag">${animal.breed}</span>` : ''}
               ${animal.age ? `<span class="tag orange">${animal.age} yrs</span>` : ''}
               <span class="tag">${animal.health_status || 'Health not specified'}</span>
             </div>
+            <div class="listing-spec-grid">
+              <div><span>Breed</span><strong>${animal.breed || 'Not specified'}</strong></div>
+              <div><span>Age</span><strong>${animal.age ? `${animal.age} years` : 'Not specified'}</strong></div>
+              <div><span>Health</span><strong>${animal.health_status || 'Not specified'}</strong></div>
+              <div><span>Location</span><strong>${animal.animal_location || animal.farmer_location || 'Not set'}</strong></div>
+            </div>
             <p>${animal.description || 'No description added.'}</p>
-            <div class="farmer-info">
-              <strong>${animal.farmer_name}</strong><br>
-              ${animal.farm_name || 'Farm name not set'} | ${animal.membership_id || 'Member'}<br>
-              ${animal.animal_location || animal.farmer_location || 'Location not set'} | ${animal.phone || 'No phone'}
+            <div class="seller-profile-card">
+              <div class="profile-avatar seller-avatar" style="${animal.profile_image_url ? `background-image:url(${assetUrl(animal.profile_image_url)})` : ''}"></div>
+              <div>
+                <strong>${animal.farmer_name}</strong>
+                ${animal.verified ? '<span class="verified-badge">Verified Farmer</span>' : ''}
+                <p>${animal.farm_name || 'Farm name not set'}</p>
+                <p>Membership ID: ${animal.membership_id || 'Not issued'}</p>
+                <p>${animal.region || animal.farmer_location || 'Region not set'} | ${animal.phone || 'No phone'}</p>
+              </div>
             </div>
             <div class="message" id="msg"></div>
             <div class="contact-box">
               ${phoneDigits ? `<a class="btn btn-primary" href="https://wa.me/${phoneDigits}" target="_blank">Contact on WhatsApp</a>` : ''}
               ${animal.phone ? `<a class="btn btn-secondary" href="tel:${animal.phone}">Call Seller</a>` : ''}
+              ${isOwner && animal.status !== 'sold' ? '<button class="btn btn-green" onclick="markDetailSold()">Mark as Sold</button>' : ''}
             </div>
             <div class="form-group">
               <label>Message Seller</label>
@@ -86,6 +101,21 @@
         });
         showMessage('msg', 'Message sent to seller.', 'success');
         document.getElementById('message').value = '';
+      } catch (error) {
+        showMessage('msg', error.message, 'error');
+      }
+    }
+
+    async function markDetailSold() {
+      if (!confirm('Mark this animal as sold? It will no longer appear as available.')) return;
+      try {
+        await apiFetch(`/animals/${currentAnimal.id}/sold`, {
+          method: 'PATCH',
+          headers: jsonHeaders(),
+          body: JSON.stringify({})
+        });
+        showMessage('msg', 'Animal marked as sold.', 'success');
+        loadDetail();
       } catch (error) {
         showMessage('msg', error.message, 'error');
       }

@@ -96,6 +96,7 @@ const renderAnimalCard = (animal, options = {}) => {
         <div class="price">${money(animal.price)}</div>
         <div style="margin-bottom:10px">
           <span class="tag green">${animal.species}</span>
+          ${animal.verified ? '<span class="tag green">Verified Farmer</span>' : ''}
           ${animal.breed ? `<span class="tag">${animal.breed}</span>` : ''}
           ${animal.age ? `<span class="tag orange">${animal.age} yrs</span>` : ''}
           <span class="tag ${statusClass}">${animal.status || 'available'}</span>
@@ -112,7 +113,9 @@ const renderAnimalCard = (animal, options = {}) => {
       <div class="card-actions">
         ${options.owner ? `
           <a class="btn btn-secondary" href="edit-animal.html?id=${animal.id}">Edit</a>
-          <button class="btn btn-green" onclick="markSold(${animal.id})">Sold</button>
+          ${animal.status === 'sold'
+            ? '<span class="btn btn-secondary disabled-link">Sold</span>'
+            : `<button class="btn btn-green" onclick="markSold(${animal.id})">Mark Sold</button>`}
           <button class="btn btn-red" onclick="deleteAnimal(${animal.id})">Delete</button>
         ` : `
           <a class="btn btn-secondary" href="animal-detail.html?id=${animal.id}">Details</a>

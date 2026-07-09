@@ -31,7 +31,7 @@ const farmerFields = `
   farmers.id, farmers.full_name, farmers.email, farmers.phone, farmers.location,
   farmers.farm_name, farmers.region, farmers.profile_image_url,
   farmers.farm_description, farmers.membership_id, farmers.role,
-  farmers.account_status, farmers.is_suspicious, farmers.created_at,
+  farmers.account_status, farmers.verified, farmers.is_suspicious, farmers.created_at,
   associations.name AS association_name
 `;
 
@@ -48,7 +48,31 @@ const getMe = async (req, res) => {
       'SELECT * FROM animals WHERE farmer_id = $1 ORDER BY created_at DESC',
       [req.farmer.id]
     );
-    res.json({ farmer: profile.rows[0], animals: animals.rows });
+    const inquiries = await pool.query(
+      `SELECT messages.*, animals.name AS animal_name
+       FROM messages
+       LEFT JOIN animals ON messages.animal_id = animals.id
+       WHERE messages.seller_id = $1
+       ORDER BY messages.created_at DESC
+       LIMIT 8`,
+      [req.farmer.id]
+    );
+    const transactions = await pool.query(
+      `SELECT sold_records.*, animals.name AS animal_name
+       FROM sold_records
+       LEFT JOIN animals ON sold_records.animal_id = animals.id
+       WHERE sold_records.seller_id = $1 OR sold_records.farmer_id = $1
+       ORDER BY COALESCE(sold_records.date_sold, sold_records.sold_at) DESC
+       LIMIT 8`,
+      [req.farmer.id]
+    );
+
+    res.json({
+      farmer: profile.rows[0],
+      animals: animals.rows,
+      inquiries: inquiries.rows,
+      transactions: transactions.rows
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -79,7 +103,7 @@ const updateMe = async (req, res) => {
        WHERE id = $8
        RETURNING id, full_name, email, phone, location, farm_name, region,
                  profile_image_url, farm_description, membership_id,
-                 association_id, role, account_status, is_suspicious`,
+                 association_id, role, account_status, verified, is_suspicious`,
       [
         full_name || req.farmer.full_name,
         phone !== undefined ? phone : req.farmer.phone,

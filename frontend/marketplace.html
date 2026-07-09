@@ -25,11 +25,20 @@
       <div class="filter-panel">
         <input id="search" placeholder="Search animal, breed, description">
         <input id="type" placeholder="Animal type">
+        <input id="region" placeholder="Region">
         <input id="breed" placeholder="Breed">
         <input id="location" placeholder="Location">
-        <input id="health_status" placeholder="Health status">
+        <select id="availability">
+          <option value="available">Available</option>
+          <option value="all">All listings</option>
+          <option value="sold">Sold</option>
+        </select>
         <input type="number" id="minPrice" placeholder="Min price">
         <input type="number" id="maxPrice" placeholder="Max price">
+        <label class="filter-check">
+          <input type="checkbox" id="verifiedOnly">
+          <span>Verified sellers only</span>
+        </label>
         <button class="btn btn-primary" onclick="loadAnimals()">Apply Filters</button>
         <button class="btn btn-secondary" onclick="clearFilters()">Clear</button>
       </div>
@@ -48,17 +57,20 @@
 
     function filterQuery() {
       const params = new URLSearchParams();
-      ['search', 'type', 'breed', 'location', 'health_status', 'minPrice', 'maxPrice'].forEach((id) => {
+      ['search', 'type', 'region', 'breed', 'location', 'availability', 'minPrice', 'maxPrice'].forEach((id) => {
         const value = document.getElementById(id).value.trim();
         if (value) params.set(id, value);
       });
+      if (document.getElementById('verifiedOnly').checked) params.set('verifiedOnly', 'true');
       return params.toString() ? `?${params.toString()}` : '';
     }
 
     function clearFilters() {
-      ['search', 'type', 'breed', 'location', 'health_status', 'minPrice', 'maxPrice'].forEach((id) => {
+      ['search', 'type', 'region', 'breed', 'location', 'minPrice', 'maxPrice'].forEach((id) => {
         document.getElementById(id).value = '';
       });
+      document.getElementById('availability').value = 'available';
+      document.getElementById('verifiedOnly').checked = false;
       loadAnimals();
     }
 

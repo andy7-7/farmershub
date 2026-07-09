@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const publicFarmerFields = `
   id, full_name, email, phone, location, farm_name, region,
   profile_image_url, farm_description, membership_id,
-  association_id, role, account_status, is_suspicious
+  association_id, role, account_status, verified, is_suspicious
 `;
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
@@ -116,17 +116,17 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    if (farmer.role !== 'admin' && farmer.account_status !== 'approved') {
-      return res.status(403).json({ message: 'This farmer account is awaiting admin approval' });
-    }
-
     const safeFarmer = {};
     publicFarmerFields.replace(/\s/g, '').split(',').forEach((field) => {
       safeFarmer[field] = farmer[field];
     });
 
     res.json({
-      message: 'Login successful',
+      message: farmer.account_status === 'approved'
+        ? 'Your account has been approved'
+        : farmer.account_status === 'rejected'
+          ? 'Your account was rejected'
+          : 'Your account is pending approval',
       token: issueToken(farmer),
       farmer: safeFarmer
     });
